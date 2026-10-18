@@ -1,0 +1,23 @@
+apiVersion: v1
+baseDomain: {{ cluster.base_domain }}
+metadata:
+  name: {{ cluster.name }}
+compute:
+- name: worker
+  replicas: 0
+controlPlane:
+  name: master
+  replicas: {{ masters_count }}
+networking:
+  networkType: {{ network.network_type }}
+  machineNetwork:
+  - cidr: {{ network.machine_network }}
+  clusterNetwork:
+  - cidr: {{ network.cluster_network }}
+    hostPrefix: {{ network.host_prefix }}
+  serviceNetwork:
+  - {{ network.service_network }}
+platform:
+  none: {}
+pullSecret: {{ pull_secret_json | tojson }}
+sshKey: {{ ssh_public_key | tojson }}
