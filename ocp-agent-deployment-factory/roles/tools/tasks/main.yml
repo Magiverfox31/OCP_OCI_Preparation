@@ -1,0 +1,2 @@
+---
+- debug: msg="Download oc and openshift-install placeholder"

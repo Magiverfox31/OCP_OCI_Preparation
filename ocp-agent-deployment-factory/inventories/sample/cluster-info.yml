@@ -1,0 +1,4 @@
+cluster_name: ocp-prod01
+base_domain: alrajhi.bank
+ocp_version: "4.18.12"
+install_path: /usr/local/bin

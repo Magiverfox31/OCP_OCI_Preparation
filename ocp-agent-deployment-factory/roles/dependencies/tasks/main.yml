@@ -1,0 +1,6 @@
+---
+- name: Check required commands
+  shell: "command -v {{ item }}"
+  loop: [curl,wget,jq,tar,dig,nc]
+  register: deps
+  ignore_errors: true
