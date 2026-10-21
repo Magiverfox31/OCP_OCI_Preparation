@@ -1,8 +1,0 @@
-network:
-  machine_network: ""  # e.g. 10.10.10.0/24
-  cluster_network: 10.128.0.0/14
-  host_prefix: 23
-  service_network: 172.30.0.0/16
-  network_type: OVNKubernetes
-  dns_servers: []  # Infoblox DNS resolver IPs
-  gateway: ""

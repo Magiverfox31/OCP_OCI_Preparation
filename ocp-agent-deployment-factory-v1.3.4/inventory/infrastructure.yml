@@ -1,9 +1,0 @@
-infrastructure:
-  platform: oci
-  dns_provider: infoblox
-  loadbalancer_provider: f5
-  api_vip: ""
-  ingress_vip: ""
-  f5_self_ips: []
-  # F5 should route API 6443, MCS 22623, ingress 80/443.
-  # DNS should resolve api, api-int and *.apps for the cluster.
