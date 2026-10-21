@@ -1,0 +1,28 @@
+infrastructure:
+  platform: oci
+  dns_provider: infoblox
+  loadbalancer_provider: f5
+  api_vip: ""
+  ingress_vip: ""
+  f5_self_ips: []
+  # F5 should route API 6443, MCS 22623, ingress 80/443.
+  # DNS should resolve api, api-int and *.apps for the cluster.
+  # --- Automated DNS (Infoblox) and F5 BIG-IP checks; see docs/NETWORK_VALIDATION.md ---
+  dns_checks:
+    enabled: true
+    timeout_seconds: 3
+    node_domain: ""          # domain for node records when a host name has no dot; empty = <cluster>.<base_domain>
+    api_int_vip: ""          # only if api-int resolves to a different address than api_vip
+    check_reverse: true      # require PTR records for every node IP
+  f5_checks:
+    enabled: true
+    tcp_probe: "warn"        # "off" | "warn" | "require" (keep the quotes). TCP connect to api 6443/22623 and ingress 443/80. Use "require" only once the cluster is running.
+    timeout_seconds: 5
+    rest:                    # optional read-only iControl REST audit of virtual servers, pools and self IPs
+      enabled: false
+      mgmt_url: ""           # e.g. https://bigip-mgmt.example.internal (https:// required)
+      username: ""           # read-only account
+      password_env: F5_PASSWORD   # name of the environment variable holding the password (never put the password in this file)
+      password_file: ""      # alternative: absolute path to a file containing only the password
+      verify_tls: true       # false only for a self-signed management certificate you cannot add to ca_bundle
+      ca_bundle: ""          # optional PEM CA bundle that signed the management certificate

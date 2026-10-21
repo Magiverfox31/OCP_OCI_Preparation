@@ -1,0 +1,25 @@
+---
+# Standalone connectivity preflight: probes the OCP allowlist URLs listed in
+# inventory/preflight.yml from this bastion. Creates no run and writes no artifacts.
+- name: OpenShift factory - preflight (URL reachability)
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Check OCP allowlist URL reachability
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ playbook_dir }}/../scripts/factory.py"
+          - preflight
+      register: preflight_result
+      changed_when: false
+      failed_when: false
+
+    - name: Show preflight output
+      ansible.builtin.debug:
+        msg: "{{ (preflight_result.stdout_lines | default([])) + (preflight_result.stderr_lines | default([])) }}"
+
+    - name: Stop if preflight failed
+      ansible.builtin.fail:
+        msg: "preflight failed (exit code {{ preflight_result.rc }}); see the output above."
+      when: preflight_result.rc != 0

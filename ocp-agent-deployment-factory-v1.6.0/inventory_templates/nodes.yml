@@ -1,0 +1,14 @@
+nodes:
+  # Add ALL hosts; MAC/IP/interface must match OCI VM networking.
+  # One node must have the rendezvous_ip specified in cluster.yml.
+  # - name: ocp-uat-cp-1
+  #   role: master  # master or worker
+  #   ip: 10.10.10.11
+  #   mac: "02:00:00:00:00:11"
+  #   interface: ens3
+  #   prefix_length: 24
+  #   gateway: 10.10.10.1
+  #   dns_servers: [10.10.10.2]
+  #   root_device_hint: "" # optional; e.g. /dev/sda
+  #   oci_vm_id: "" # optional tracking only
+  []

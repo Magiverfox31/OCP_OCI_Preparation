@@ -1,0 +1,38 @@
+apiVersion: v1
+baseDomain: {{ cluster.base_domain }}
+metadata:
+  name: {{ cluster.name }}
+compute:
+- name: worker
+  replicas: {{ workers_count }}
+controlPlane:
+  name: master
+  replicas: {{ masters_count }}
+networking:
+  networkType: {{ network.network_type }}
+  machineNetwork:
+  - cidr: {{ network.machine_network }}
+  clusterNetwork:
+  - cidr: {{ network.cluster_network }}
+    hostPrefix: {{ network.host_prefix }}
+  serviceNetwork:
+  - {{ network.service_network }}
+platform:
+  none: {}
+{% if proxy_cfg %}
+proxy:
+{% if proxy_cfg.http_proxy %}
+  httpProxy: {{ proxy_cfg.http_proxy | tojson }}
+{% endif %}
+{% if proxy_cfg.https_proxy %}
+  httpsProxy: {{ proxy_cfg.https_proxy | tojson }}
+{% endif %}
+  noProxy: {{ proxy_cfg.no_proxy | tojson }}
+{% if proxy_cfg.trust_bundle %}
+additionalTrustBundlePolicy: {{ proxy_cfg.trust_policy }}
+additionalTrustBundle: |
+{{ proxy_cfg.trust_bundle | indent(2, true) }}
+{% endif %}
+{% endif %}
+pullSecret: {{ pull_secret_json | tojson }}
+sshKey: {{ ssh_public_key | tojson }}
