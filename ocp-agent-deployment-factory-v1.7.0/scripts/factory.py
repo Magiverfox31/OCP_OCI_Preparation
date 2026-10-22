@@ -9,8 +9,9 @@ os.umask(0o077)
 ROOT=Path(__file__).resolve().parents[1]
 FILES=['cluster.yml','nodes.yml','network.yml','infrastructure.yml','preflight.yml']
 def die(s): raise RuntimeError(s)
-def load_netcheck():
- spec=importlib.util.spec_from_file_location('netcheck',ROOT/'scripts'/'netcheck.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+def load_script(name):
+ spec=importlib.util.spec_from_file_location(name,ROOT/'scripts'/(name+'.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+def load_netcheck():return load_script('netcheck')
 def env_true(name):return os.environ.get(name,'').strip().lower() in ('1','true','yes')
 def digest(p):
  h=hashlib.sha256()
@@ -74,6 +75,7 @@ def validate(v):
   if not isinstance(pf.get('urls'),list) or not pf['urls']:die('preflight.urls must be a non-empty list (or set preflight.enabled: false)')
   if not all(isinstance(u,str) and u.strip() for u in pf['urls']):die('preflight.urls entries must be non-empty strings')
   if int(pf.get('timeout_seconds',10))<1:die('preflight.timeout_seconds must be >= 1')
+  if pf.get('http_client','auto') not in ('auto','curl','urllib'):die('preflight.http_client must be auto, curl or urllib')
   if pf.get('ca_bundle') and not Path(pf['ca_bundle']).is_file():die(f"Missing preflight.ca_bundle: {pf['ca_bundle']}")
  load_netcheck().validate_config(v)
  if c.get('release_image') and not re.fullmatch(r'\S+',str(c['release_image'])):die('release_image must not contain whitespace')
@@ -98,29 +100,47 @@ def proxy_data(v):
  no_proxy=','.join(dict.fromkeys(items))
  tb=px.get('additional_trust_bundle_file')
  return {'http_proxy':px.get('http_proxy') or '','https_proxy':px.get('https_proxy') or '','no_proxy':no_proxy,'trust_bundle':Path(tb).read_text().strip() if tb else '','trust_policy':px.get('additional_trust_bundle_policy','Proxyonly')}
-def probe_url(curl,url,pf):
+def probe_url(client,url,pf):
+ """Probe one URL with curl or the built-in HTTP client. Any HTTP answer (even 3xx/4xx/5xx) means reachable; redirects are not followed."""
  target=url if '://' in url else 'https://'+url
- cmd=[curl,'-sS','-I','-o','/dev/null','-w','%{http_code}','--connect-timeout',str(int(pf.get('timeout_seconds',10))),'--max-time',str(int(pf.get('timeout_seconds',10))),'-L','--max-redirs','3']
+ kind,curl=client
+ t=int(pf.get('timeout_seconds',10))
+ if kind=='urllib':
+  nt=load_script('nettools')
+  try:
+   status,_=nt.urllib_fetch(target,method='HEAD',timeout=t,proxy=pf.get('proxy') or '',ca_bundle=pf.get('ca_bundle') or '')
+  except nt.FetchError as e:
+   return {'url':target,'ok':False,'http_code':'','curl_rc':None,'detail':str(e)}
+  return {'url':target,'ok':True,'http_code':str(status),'curl_rc':None,'detail':''}
+ cmd=[curl,'-sS','-I','-o','/dev/null','-w','%{http_code}','--connect-timeout',str(t),'--max-time',str(t)]
  if pf.get('proxy'):cmd+=['-x',pf['proxy']]
  if pf.get('ca_bundle'):cmd+=['--cacert',pf['ca_bundle']]
  r=subprocess.run(cmd+[target],capture_output=True,text=True)
  code=r.stdout.strip()
  ok=r.returncode==0 and code not in ('','000')
  return {'url':target,'ok':ok,'http_code':code,'curl_rc':r.returncode,'detail':'' if ok else (r.stderr.strip() or 'no HTTP response')}
+def http_client(setting):
+ """('curl', path) or ('urllib', None) according to preflight.http_client and what is installed."""
+ curl=shutil.which('curl')
+ if setting=='curl':
+  if not curl:die('preflight.http_client is "curl" but curl is not installed; use "auto" or "urllib"')
+  return ('curl',curl)
+ if setting=='urllib' or not curl:return ('urllib',None)
+ return ('curl',curl)
 def preflight_check(v):
  """Probe the OCP allowlist URLs. Returns report dict; any HTTP response counts as reachable."""
  pf=v.get('preflight') or {}
  if not pf.get('enabled',True):return {'enabled':False,'results':[]}
- curl=shutil.which('curl')
- if not curl:die('curl not found in PATH; run playbooks/dependencies.yml')
+ client=http_client(pf.get('http_client','auto'))
+ label='curl' if client[0]=='curl' else 'built-in Python HTTP client'+('' if pf.get('http_client')=='urllib' else ' (curl not found)')
  with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
-  results=list(ex.map(lambda u:probe_url(curl,u,pf),pf['urls']))
- return {'enabled':True,'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'proxy':pf.get('proxy') or '','results':results}
+  results=list(ex.map(lambda u:probe_url(client,u,pf),pf['urls']))
+ return {'enabled':True,'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'proxy':pf.get('proxy') or '','client':label,'results':results}
 def print_report(rep):
  if not rep['enabled']:print('PREFLIGHT: disabled in inventory/preflight.yml');return True
  bad=[r for r in rep['results'] if not r['ok']]
  for r in rep['results']:print('  %-4s %-45s %s'%('OK' if r['ok'] else 'FAIL',r['url'],('HTTP '+r['http_code']) if r['ok'] else r['detail']))
- print('PREFLIGHT: %d/%d URLs reachable'%(len(rep['results'])-len(bad),len(rep['results'])))
+ print('PREFLIGHT: %d/%d URLs reachable (client: %s)'%(len(rep['results'])-len(bad),len(rep['results']),rep.get('client','n/a')))
  return not bad
 def preflight():
  v=read_inventory();validate(v)

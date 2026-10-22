@@ -16,7 +16,7 @@ The `netcheck` stage tests the DNS and load balancer prerequisites from the Orac
 
 ## DNS (Infoblox)
 
-The checks use `dig` against **every resolver** in `network.dns_servers` and any per-node `dns_servers`, i.e. the servers the nodes will use. Infoblox NIOS is a standard DNS server, so no Infoblox API access or credentials are needed.
+The checks query **every resolver** in `network.dns_servers` and any per-node `dns_servers`, i.e. the servers the nodes will use. They use `dig` when installed and otherwise a built-in Python DNS client (`dns_checks.method`), and they never use ping. If UDP/53 gets no reply but TCP/53 works, the resolver is checked over TCP and reported once as a `WARN` (`dns_checks.transport`). See [TOOLS_AND_FALLBACKS.md](TOOLS_AND_FALLBACKS.md). Infoblox NIOS is a standard DNS server, so no Infoblox API access or credentials are needed.
 
 | Record queried | Expected |
 | --- | --- |
@@ -34,7 +34,7 @@ How failures read and what they usually mean:
 | `NXDOMAIN` | The record does not exist. Create the A record, the wildcard A record `*.apps.<cluster>.<base_domain>`, and PTR records for the nodes. |
 | `got X, expected Y` | A record exists but points elsewhere (often a stale or mistyped VIP). |
 | `SERVFAIL` | Zone not loaded or served, forwarder or DNSSEC problem on the resolver. |
-| `no reply from server` | Routing, firewall or NSG blocks DNS (UDP/TCP 53) between the bastion and the resolver. |
+| `no reply from server` | Routing, firewall or NSG blocks DNS between the bastion and the resolver. When both transports fail the message names each (`UDP: ...; TCP: ...`). |
 
 Limits: the check shows what the resolver answers **to the bastion**. If Infoblox uses different views or ACLs for the node subnet, answers there can differ; verify from the node subnet too. Negative answers may be cached by the resolver. The check does not read Infoblox configuration (no WAPI), so it cannot say why a record is missing.
 
@@ -44,7 +44,7 @@ Two independent checks, both under `f5_checks`.
 
 ### 1. REST configuration audit (`f5_checks.rest`, recommended before install)
 
-Reads the BIG-IP over iControl REST with three GET requests (`/mgmt/tm/ltm/virtual`, `/mgmt/tm/ltm/pool`, `/mgmt/tm/net/self`) and compares the result with the inventory.
+Reads the BIG-IP over iControl REST (with `curl` when installed, otherwise a built-in Python HTTP client: `rest.http_client`) with three GET requests (`/mgmt/tm/ltm/virtual`, `/mgmt/tm/ltm/pool`, `/mgmt/tm/net/self`) and compares the result with the inventory.
 
 | Virtual server destination | Its default pool must contain |
 | --- | --- |
@@ -63,6 +63,7 @@ Setup:
 2. Set `f5_checks.rest.enabled: true`, `mgmt_url: "https://<management address>"` and `username`.
 3. Provide the password outside the inventory: `export F5_PASSWORD='...'` (or set `password_env` to another variable name, or `password_file` to a file containing only the password). It is passed to curl on standard input, so it does not appear in the process list, and it is never written to a report.
 4. Trust the management certificate with `ca_bundle: "/path/ca.pem"`. As a last resort set `verify_tls: false` (this disables certificate checking).
+5. If the bastion has `https_proxy` set in its environment, add the BIG-IP management address to `no_proxy`, otherwise the REST requests go through the proxy.
 
 Not checked: health monitor type or receive strings, TCP vs. fastL4 profiles, SNAT/source translation, iRules and local traffic policies, HA sync and traffic groups, live availability state, and route-domain or partition rules beyond matching the address and port. Review these manually.
 
@@ -86,7 +87,7 @@ These are outside what the factory can see; confirm them with the infrastructure
 - BIG-IP self IPs (the source of health monitor traffic) are allowed to the nodes by OCI NSGs/security lists, and node subnets can reach the VIPs.
 - Routes, MTU, NTP and registry/mirror reachability **from the node subnet** (not just the bastion).
 
-Equivalent manual commands:
+Equivalent manual commands (alternatives when `dig`, `nc` or ping are blocked or missing are in [TOOLS_AND_FALLBACKS.md](TOOLS_AND_FALLBACKS.md)):
 
 ```bash
 dig @<dns-server-ip> api.<cluster>.<base-domain> A +short
@@ -101,4 +102,4 @@ nc -zvw3 <ingress-vip> 80
 
 ## Testing status and limitations
 
-The DNS logic was tested against a `dig` stub that reproduces dig's output format, and the F5 logic against a TLS mock of the iControl REST API. **Neither was tested against a real `dig`, Infoblox grid or BIG-IP.** The REST parsing relies on documented field names (`destination`, `pool`, `membersReference`, `address`); if your BIG-IP version differs, a `FAIL` may reflect parsing rather than configuration, so confirm it manually and report it. The factory does not provision OCI VMs, create Infoblox records, modify the BIG-IP, or guarantee image bootability.
+The DNS logic was tested with the built-in resolver against a mock DNS server that speaks the real wire protocol over UDP and TCP, and with the `dig` path against a stub that reproduces dig's output format. The F5 logic was tested against a TLS mock of the iControl REST API, through both HTTP clients. **None of it was tested against a real `dig`, Infoblox grid or BIG-IP.** The REST parsing relies on documented field names (`destination`, `pool`, `membersReference`, `address`); if your BIG-IP version differs, a `FAIL` may reflect parsing rather than configuration, so confirm it manually and report it. The factory does not provision OCI VMs, create Infoblox records, modify the BIG-IP, or guarantee image bootability.

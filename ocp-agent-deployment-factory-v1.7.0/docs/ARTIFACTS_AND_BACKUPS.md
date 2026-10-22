@@ -8,7 +8,7 @@ For `ocp-uat`, the published files are:
 - `ocp-uat-agent.x86_64.iso`
 - `ocp-uat-agent.x86_64.qcow2`
 
-`work/<cluster>/<run-id>/` contains `inventory/` (snapshot), `review/` (cluster-prefixed YAML), `installer/` (standard installer names), `preflight-report.json` (URL reachability result from prepare time), `netcheck-report.json` (DNS/F5 check results from prepare time; contains no credentials), `run.json` (run state, hashes and approval), and, after build, `artifacts/`. `work/active-run.json` points to the active run.
+`work/<cluster>/<run-id>/` contains `inventory/` (snapshot), `review/` (cluster-prefixed YAML), `installer/` (standard installer names), `preflight-report.json` (URL reachability result from prepare time, including which HTTP client ran), `netcheck-report.json` (DNS/F5 check results from prepare time, including which tools ran; contains no credentials), `run.json` (run state, hashes and approval), and, after build, `artifacts/`. `work/active-run.json` points to the active run.
 
 `backups/<cluster>/<run-id>/` contains `inventory/`, `review/`, `artifacts/`, `run.json`, `preflight-report.json`, `netcheck-report.json`, and `checksums.json`. The archive routine copies and SHA-256 verifies its payload before resetting the five active inventory files from `inventory_templates/`. The original work directory is retained.
 

@@ -10,7 +10,7 @@ Bypass deliberately (for example, a disconnected install using a mirror registry
 
 ## How a URL is judged
 
-Each URL is probed with `curl -I` using the configured timeout, in parallel.
+Each URL is probed with a HEAD request using the configured timeout, in parallel, with `curl` when installed and otherwise with a built-in Python HTTP client (see [TOOLS_AND_FALLBACKS.md](TOOLS_AND_FALLBACKS.md)). Redirects are not followed: any HTTP answer, including 301, means the server is reachable.
 
 | Result | Meaning |
 | --- | --- |
@@ -27,7 +27,8 @@ If any URL fails, `prepare` stops with the list and no run is created.
 | --- | --- |
 | `enabled` | `false` skips the check. |
 | `timeout_seconds` | Connect and total timeout per URL (default 10). |
-| `proxy` | Optional proxy URL passed to curl. Empty uses curl's environment (`https_proxy` etc.). Independent of the cluster `proxy:` block in `network.yml`; set both if both paths need the proxy. |
+| `http_client` | `auto` (default: curl if installed, otherwise the built-in client), `curl` or `urllib`. The summary line shows which one ran. |
+| `proxy` | Optional proxy URL (`http://...`) used by either client. Empty uses the environment (`https_proxy`, `no_proxy` etc.). Independent of the cluster `proxy:` block in `network.yml`; set both if both paths need the proxy. |
 | `ca_bundle` | Optional absolute path to a CA bundle for TLS-inspecting proxies. |
 | `urls` | URLs to probe. Entries without a scheme are probed as `https://`. |
 

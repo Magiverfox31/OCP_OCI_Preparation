@@ -25,27 +25,29 @@ ansible-playbook playbooks/dependencies.yml --ask-become-pass
 
 `prepare.yml` and `build.yml` also import the dependency playbook. The playbook checks Oracle Linux major version 9, uses idempotent `ansible.builtin.dnf` installation, and verifies command and Python module availability.
 
-| Category | Oracle Linux 9 package | Verification | Use |
-| --- | --- | --- | --- |
-| TCP probes | `nmap-ncat` | `nc` | Manual F5 VIP / API TCP port tests (the factory's own TCP probe uses Python) |
-| HTTP requests | `curl` | `curl` | URL reachability preflight and endpoint probes |
-| Network state | `nmstate` | `nmstatectl` | Network inspection |
-| DNS tools | `bind-utils` | `dig`, `nslookup` | **Used by the factory** for the Infoblox DNS checks (`netcheck`) |
-| Routing tools | `iproute` | `ip` | IP/interface/route checks |
-| TLS tools | `openssl` | `openssl` | TLS diagnostics |
-| Image conversion | `qemu-img` | `qemu-img` | ISO-to-QCOW2 conversion |
-| Archives | `tar`, `gzip` | `tar`, `gzip` | Packaging and extraction |
-| Python | `python3`, `python3-pip` | `python3` | Factory runtime |
-| Python YAML | `python3-pyyaml` | `import yaml` | Parse inventory/YAML |
-| Python templates | `python3-jinja2` | `import jinja2` | Render configuration |
-| Ansible controller | `ansible-core` | `ansible-playbook` | One-time pre-bootstrap install |
+| Tier | Category | Oracle Linux 9 package | Verification | Use |
+| --- | --- | --- | --- | --- |
+| Required | Network config | `nmstate` | `nmstatectl` | Needed by `openshift-install` for static host networking |
+| Required | Image conversion | `qemu-img` | `qemu-img` | ISO-to-QCOW2 conversion |
+| Required | Archives | `tar`, `gzip` | `tar`, `gzip` | Packaging and extraction |
+| Required | Python | `python3` | `python3` | Factory runtime |
+| Required | Python YAML | `python3-pyyaml` | `import yaml` | Parse inventory/YAML |
+| Required | Python templates | `python3-jinja2` | `import jinja2` | Render configuration |
+| Optional | HTTP requests | `curl` | `curl` | URL preflight and F5 REST audit (built-in Python client if absent) |
+| Optional | DNS tools | `bind-utils` | `dig`, `nslookup` | Infoblox DNS checks (built-in Python resolver if absent) |
+| Optional | TCP probes | `nmap-ncat` | `nc` | Manual TCP tests only (the factory's own TCP probe uses Python) |
+| Optional | Routing tools | `iproute` | `ip` | Manual IP/interface/route checks |
+| Optional | TLS tools | `openssl` | `openssl` | Manual TLS diagnostics |
+| Optional | Python packaging | `python3-pip` | `pip3` | Not used by the factory |
+| Controller | Ansible | `ansible-core` | `ansible-playbook` | One-time pre-bootstrap install |
 
-The package manager may report a package as already installed; this is expected. Packages are only installed if missing.
+The package manager may report a package as already installed; this is expected. Packages are only installed if missing. If a repository blocks an **optional** package the playbook continues and prints what the factory does without it; a **required** package that cannot be installed stops the run. ICMP (ping) is never used. Details: [TOOLS_AND_FALLBACKS.md](TOOLS_AND_FALLBACKS.md).
 
 ## 3. Verify the environment
 
 ```bash
-command -v ansible-playbook python3 nc curl nmstatectl qemu-img dig nslookup ip openssl tar gzip
+# required: ansible-playbook python3 nmstatectl qemu-img tar gzip   (the others are optional)
+command -v ansible-playbook python3 nmstatectl qemu-img tar gzip nc curl dig nslookup ip openssl
 python3 -c 'import yaml, jinja2; print("Python modules OK")'
 ansible-playbook playbooks/dependencies.yml --ask-become-pass
 ```

@@ -1,12 +1,14 @@
 """DNS (Infoblox) and load balancer (F5 BIG-IP) readiness checks for the OpenShift agent factory.
 
-Checks are read-only:
-  * DNS:  `dig` queries against the resolvers listed in the inventory (what the nodes will use).
+Checks are read-only and never use ICMP (ping):
+  * DNS:  queries against the resolvers listed in the inventory (what the nodes will use), using `dig` when it is
+          installed and a built-in Python DNS client otherwise; UDP first, TCP when UDP gets no reply.
   * F5:   optional iControl REST read of virtual servers, pools and self IPs, plus optional TCP probes.
 Statuses: OK, WARN (reported, never blocks), FAIL (blocks `prepare`).
 """
 import concurrent.futures
 import datetime
+import importlib.util
 import ipaddress
 import json
 import os
@@ -15,6 +17,16 @@ import shutil
 import socket
 import subprocess
 from pathlib import Path
+
+
+def _load_sibling(name):
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).resolve().parent / (name + '.py'))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+nettools = _load_sibling('nettools')
 
 SERVICES = (  # (vip key, port, label, backend role)
     ('api_vip', 6443, 'API', 'masters'),
@@ -34,7 +46,8 @@ def _r(category, name, status, detail=''):
 
 # ----------------------------------------------------------------------------- configuration
 def dns_cfg(v):
-    d = dict(enabled=True, timeout_seconds=3, node_domain='', api_int_vip='', check_reverse=True)
+    d = dict(enabled=True, timeout_seconds=3, node_domain='', api_int_vip='', check_reverse=True,
+             method='auto', transport='auto')
     d.update(v.get('infrastructure', {}).get('dns_checks') or {})
     return d
 
@@ -45,7 +58,7 @@ def f5_cfg(v):
     if f['tcp_probe'] is False:  # YAML 1.1 reads an unquoted `off` as boolean false
         f['tcp_probe'] = 'off'
     rest = dict(enabled=False, mgmt_url='', username='', password_env='F5_PASSWORD',
-                password_file='', verify_tls=True, ca_bundle='')
+                password_file='', verify_tls=True, ca_bundle='', http_client='auto')
     rest.update(f.get('rest') or {})
     f['rest'] = rest
     return f
@@ -60,12 +73,18 @@ def validate_config(v):
             raise CheckError('infrastructure.dns_checks.timeout_seconds must be >= 1')
         if d['api_int_vip']:
             ipaddress.ip_address(d['api_int_vip'])
+        if d['method'] not in ('auto', 'dig', 'builtin'):
+            raise CheckError('infrastructure.dns_checks.method must be auto, dig or builtin')
+        if d['transport'] not in ('auto', 'udp', 'tcp'):
+            raise CheckError('infrastructure.dns_checks.transport must be auto, udp or tcp')
     if f['enabled']:
         if f['tcp_probe'] not in ('off', 'warn', 'require'):
             raise CheckError('infrastructure.f5_checks.tcp_probe must be off, warn or require')
         if int(f['timeout_seconds']) < 1:
             raise CheckError('infrastructure.f5_checks.timeout_seconds must be >= 1')
         rest = f['rest']
+        if rest['http_client'] not in ('auto', 'curl', 'urllib'):
+            raise CheckError('infrastructure.f5_checks.rest.http_client must be auto, curl or urllib')
         if rest['enabled']:
             if not str(rest['mgmt_url']).startswith('https://'):
                 raise CheckError('infrastructure.f5_checks.rest.mgmt_url must start with https://')
@@ -92,8 +111,10 @@ def _f5_password(rest, environ):
 
 
 # ----------------------------------------------------------------------------- DNS (Infoblox)
-def _dig(dig, server, name, rtype, timeout, reverse=False):
+def _dig(dig, server, name, rtype, timeout, reverse=False, tcp=False):
     cmd = [dig, '+noall', '+comments', '+answer', f'+time={timeout}', '+tries=1', f'@{server}']
+    if tcp:
+        cmd.append('+tcp')
     cmd += ['-x', name] if reverse else [name, rtype]
     p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout * 3 + 10)
     out = p.stdout
@@ -113,6 +134,31 @@ def _dig(dig, server, name, rtype, timeout, reverse=False):
     return {'status': status, 'answers': answers}
 
 
+def dns_method(cfg):
+    """Return ('dig', path) or ('builtin', None) according to dns_checks.method and what is installed."""
+    dig = shutil.which('dig')
+    if cfg['method'] == 'dig':
+        if not dig:
+            raise CheckError('dns_checks.method is "dig" but dig is not installed (package bind-utils); use "auto" or "builtin"')
+        return 'dig', dig
+    if cfg['method'] == 'builtin' or not dig:
+        return 'builtin', None
+    return 'dig', dig
+
+
+def _query(method, dig, server, name, rtype, timeout, reverse, transport):
+    """One DNS query through dig or the built-in client; result carries 'via' ('udp' or 'tcp') on success."""
+    if method == 'builtin':
+        return nettools.dns_query(server, name, rtype, timeout=timeout, transport=transport, reverse=reverse)
+    res = {'error': 'no reply from server (timeout, routing or firewall)'}
+    for tcp in {'udp': [False], 'tcp': [True], 'auto': [False, True]}[transport]:
+        res = _dig(dig, server, name, rtype, timeout, reverse, tcp)
+        if 'error' not in res:
+            res['via'] = 'tcp' if tcp else 'udp'
+            return res
+    return res
+
+
 def _dns_problem(res):
     """Return an explanatory FAIL detail for a non-NOERROR/empty answer, or None."""
     if 'error' in res:
@@ -130,13 +176,13 @@ def _dns_problem(res):
     return None
 
 
-def dns_checks(v, environ=None):
+def dns_checks(v, environ=None, tools=None):
     d = dns_cfg(v)
     if not d['enabled']:
         return []
-    dig = shutil.which('dig')
-    if not dig:
-        raise CheckError('dig not found in PATH; run playbooks/dependencies.yml (package bind-utils)')
+    method, dig = dns_method(d)
+    if tools is not None:
+        tools['dns'] = 'dig' if method == 'dig' else 'built-in Python resolver' + ('' if d['method'] == 'builtin' else ' (dig not found)')
     c, n, i, nodes = v['cluster'], v['network'], v['infrastructure'], v['nodes']
     cl, bd = c['name'], c['base_domain']
     timeout = int(d['timeout_seconds'])
@@ -154,9 +200,16 @@ def dns_checks(v, environ=None):
         if d['check_reverse']:
             tests.append(('PTR', x['ip'], {fqdn.lower()}, f"node {x['name']} reverse", True))
 
+    # Probe each resolver once first. A resolver that does not answer or refuses us is reported once, not per record.
+    # With transport "auto" the probe also decides UDP vs TCP for that resolver, so later queries do not wait for a
+    # UDP timeout every time.
+    def probe(server):
+        res = _query(method, dig, server, f'api.{cl}.{bd}', 'A', timeout, False, d['transport'])
+        return server, res
+
     def run(job):
-        server, (rtype, name, expect, label, reverse) = job
-        res = _dig(dig, server, name, rtype, timeout, reverse)
+        server, transport, (rtype, name, expect, label, reverse) = job
+        res = _query(method, dig, server, name, rtype, timeout, reverse, transport)
         title = f'{label}: {name} @{server}'
         problem = _dns_problem(res)
         if problem:
@@ -173,18 +226,20 @@ def dns_checks(v, environ=None):
             return _r('dns', title, 'WARN', f"reverse name is {', '.join(sorted(got))}, expected {', '.join(sorted(expect))}")
         return _r('dns', title, 'FAIL', f"got {', '.join(sorted(got))}, expected {', '.join(sorted(expect))}")
 
-    # Probe each resolver once first: a resolver that does not answer or refuses us is reported once, not per record.
-    def usable(server):
-        res = _dig(dig, server, f'api.{cl}.{bd}', 'A', timeout)
-        if 'error' in res or res['status'] in ('REFUSED', 'SERVFAIL'):
-            return server, _dns_problem(res)
-        return server, None
-
+    results, jobs = [], []
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
-        probed = list(ex.map(usable, servers))
-        results = [_r('dns', f'resolver @{srv}', 'FAIL', f'unusable, its records were not checked: {why}') for srv, why in probed if why]
-        good = [srv for srv, why in probed if not why]
-        results += list(ex.map(run, [(srv, t) for srv in good for t in tests]))
+        for server, res in ex.map(probe, servers):
+            why = _dns_problem(res)
+            if why and ('error' in res or res['status'] in ('REFUSED', 'SERVFAIL')):
+                results.append(_r('dns', f'resolver @{server}', 'FAIL', f'unusable, its records were not checked: {why}'))
+                continue
+            via = res.get('via', 'udp')
+            if via == 'tcp' and d['transport'] == 'auto':
+                results.append(_r('dns', f'resolver @{server}', 'WARN',
+                                  'no UDP/53 reply but TCP/53 works from this bastion; nodes query over UDP first, '
+                                  'so confirm UDP/53 is allowed from the node subnet'))
+            jobs += [(server, via, t) for t in tests]
+        results += list(ex.map(run, jobs))
     return results
 
 
@@ -193,20 +248,44 @@ def _curl_cfg_quote(s):
     return s.replace('\\', '\\\\').replace('"', '\\"')
 
 
-def _f5_get(curl, rest, password, path, timeout):
+def http_client(setting):
+    """Return ('curl', path) or ('urllib', None) according to the setting and what is installed."""
+    curl = shutil.which('curl')
+    if setting == 'curl':
+        if not curl:
+            raise CheckError('http_client is "curl" but curl is not installed; use "auto" or "urllib"')
+        return 'curl', curl
+    if setting == 'urllib' or not curl:
+        return 'urllib', None
+    return 'curl', curl
+
+
+def _f5_get(client, rest, password, path, timeout):
+    kind, curl = client
     base = rest['mgmt_url'].rstrip('/')
-    cmd = [curl, '-sS', '--max-time', str(timeout), '-K', '-', '-H', 'Accept: application/json',
-           '-w', '\n%{http_code}', base + path]
-    if not rest['verify_tls']:
-        cmd.insert(1, '-k')
-    if rest['ca_bundle']:
-        cmd[1:1] = ['--cacert', rest['ca_bundle']]
-    cfg = 'user = "%s:%s"\n' % (_curl_cfg_quote(rest['username']), _curl_cfg_quote(password))  # via stdin: not visible in ps
-    p = subprocess.run(cmd, input=cfg, capture_output=True, text=True)
-    if p.returncode != 0:
-        hint = ' (set f5_checks.rest.ca_bundle to the CA that signed the management certificate, or verify_tls: false as a last resort)' if p.returncode in (35, 51, 58, 60, 77, 83) else ''
-        raise CheckError('cannot reach the BIG-IP management API: ' + (p.stderr.strip() or f'curl exit {p.returncode}')[:200] + hint)
-    body, _, code = p.stdout.rpartition('\n')
+    tls_hint = ' (set f5_checks.rest.ca_bundle to the CA that signed the management certificate, or verify_tls: false as a last resort)'
+    if kind == 'curl':
+        cmd = [curl, '-sS', '--max-time', str(timeout), '-K', '-', '-H', 'Accept: application/json',
+               '-w', '\n%{http_code}', base + path]
+        if not rest['verify_tls']:
+            cmd.insert(1, '-k')
+        if rest['ca_bundle']:
+            cmd[1:1] = ['--cacert', rest['ca_bundle']]
+        cfg = 'user = "%s:%s"\n' % (_curl_cfg_quote(rest['username']), _curl_cfg_quote(password))  # via stdin: not visible in ps
+        p = subprocess.run(cmd, input=cfg, capture_output=True, text=True)
+        if p.returncode != 0:
+            hint = tls_hint if p.returncode in (35, 51, 58, 60, 77, 83) else ''
+            raise CheckError('cannot reach the BIG-IP management API: ' + (p.stderr.strip() or f'curl exit {p.returncode}')[:200] + hint)
+        body, _, code = p.stdout.rpartition('\n')
+    else:
+        try:
+            status, body = nettools.urllib_fetch(base + path, 'GET', timeout=timeout, ca_bundle=rest['ca_bundle'],
+                                                 verify=rest['verify_tls'], user=rest['username'], password=password,
+                                                 headers={'Accept': 'application/json'})
+        except nettools.FetchError as exc:
+            hint = tls_hint if 'SSL' in str(exc) else ''
+            raise CheckError('cannot reach the BIG-IP management API: ' + str(exc)[:200] + hint)
+        code = str(status)
     if code == '401':
         raise CheckError('BIG-IP rejected the credentials (HTTP 401)')
     if code == '403':
@@ -228,23 +307,23 @@ def _vs_endpoint(dest):
     return (m.group(1), int(m.group(2))) if m else (None, None)
 
 
-def f5_rest_checks(v, environ):
+def f5_rest_checks(v, environ, tools=None):
     f = f5_cfg(v)
     rest = f['rest']
     if not (f['enabled'] and rest['enabled']):
         return []
-    curl = shutil.which('curl')
-    if not curl:
-        raise CheckError('curl not found in PATH; run playbooks/dependencies.yml')
+    client = http_client(rest['http_client'])
+    if tools is not None:
+        tools['f5_rest'] = 'curl' if client[0] == 'curl' else 'built-in Python HTTP client' + ('' if rest['http_client'] == 'urllib' else ' (curl not found)')
     password = _f5_password(rest, environ)
     t = int(f['timeout_seconds']) * 2
     i, nodes = v['infrastructure'], v['nodes']
     masters = {x['ip'] for x in nodes if x['role'] == 'master'}
     workers = {x['ip'] for x in nodes if x['role'] == 'worker'}
     try:
-        vs_items = _f5_get(curl, rest, password, '/mgmt/tm/ltm/virtual?expandSubcollections=true', t).get('items', [])
-        pool_items = _f5_get(curl, rest, password, '/mgmt/tm/ltm/pool?expandSubcollections=true', t).get('items', [])
-        self_items = _f5_get(curl, rest, password, '/mgmt/tm/net/self', t).get('items', [])
+        vs_items = _f5_get(client, rest, password, '/mgmt/tm/ltm/virtual?expandSubcollections=true', t).get('items', [])
+        pool_items = _f5_get(client, rest, password, '/mgmt/tm/ltm/pool?expandSubcollections=true', t).get('items', [])
+        self_items = _f5_get(client, rest, password, '/mgmt/tm/net/self', t).get('items', [])
     except CheckError as e:
         return [_r('f5-config', 'BIG-IP iControl REST', 'FAIL', str(e))]
 
@@ -342,9 +421,11 @@ def run(v, environ=None):
     environ = os.environ if environ is None else environ
     validate_config(v)
     d, f = dns_cfg(v), f5_cfg(v)
-    results = dns_checks(v, environ) + f5_rest_checks(v, environ) + f5_tcp_checks(v)
+    tools = {}
+    results = dns_checks(v, environ, tools) + f5_rest_checks(v, environ, tools) + f5_tcp_checks(v)
     active = d['enabled'] or (f['enabled'] and (f['rest']['enabled'] or f['tcp_probe'] != 'off'))
-    return {'enabled': bool(active), 'checked_at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'results': results}
+    return {'enabled': bool(active), 'checked_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'tools': tools, 'results': results}
 
 
 def print_report(report):
@@ -352,6 +433,8 @@ def print_report(report):
     if not report['enabled'] or not report['results']:
         print('NETCHECK: no DNS/F5 checks enabled in inventory/infrastructure.yml')
         return True
+    if report.get('tools'):
+        print('NETCHECK tools: ' + '; '.join('%s via %s' % (k.replace('_', ' ').upper(), val) for k, val in report['tools'].items()))
     for r in report['results']:
         print('  %-4s %-8s %s%s' % (r['status'], r['category'], r['name'], (' -> ' + r['detail']) if r['detail'] else ''))
     counts = {s: sum(1 for r in report['results'] if r['status'] == s) for s in ('OK', 'WARN', 'FAIL')}

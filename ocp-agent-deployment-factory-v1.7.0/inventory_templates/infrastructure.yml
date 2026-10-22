@@ -14,6 +14,8 @@ infrastructure:
     node_domain: ""          # domain for node records when a host name has no dot; empty = <cluster>.<base_domain>
     api_int_vip: ""          # only if api-int resolves to a different address than api_vip
     check_reverse: true      # require PTR records for every node IP
+    method: "auto"           # "auto" (dig if installed, otherwise the built-in Python resolver), "dig" or "builtin"
+    transport: "auto"        # "auto" (UDP, then TCP when UDP gets no reply), "udp" or "tcp"
   f5_checks:
     enabled: true
     tcp_probe: "warn"        # "off" | "warn" | "require" (keep the quotes). TCP connect to api 6443/22623 and ingress 443/80. Use "require" only once the cluster is running.
@@ -26,3 +28,4 @@ infrastructure:
       password_file: ""      # alternative: absolute path to a file containing only the password
       verify_tls: true       # false only for a self-signed management certificate you cannot add to ca_bundle
       ca_bundle: ""          # optional PEM CA bundle that signed the management certificate
+      http_client: "auto"    # "auto" (curl if installed, otherwise the built-in Python client), "curl" or "urllib"

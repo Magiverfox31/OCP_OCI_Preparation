@@ -23,7 +23,8 @@ If `build` fails, fix the cause and run `build.yml` again; installer inputs are 
 
 ## Troubleshooting
 
-- `dnf` fails: inspect `sudo dnf repolist`, repositories and proxy.
+- `dnf` fails: inspect `sudo dnf repolist`, repositories and proxy. A failure on a *required* package (python3, PyYAML, Jinja2, qemu-img, nmstate, tar, gzip) stops the run; a failure on an *optional* one (curl, bind-utils, nmap-ncat, iproute, openssl, python3-pip) only prints a note.
+- A tool is missing or blocked (ping, dig, curl, nc): the factory never uses ping, and uses built-in Python DNS/HTTP clients when `dig`/`curl` are absent. The line `NETCHECK tools:` (and `(client: ...)` in the preflight summary) shows which one ran. If UDP/53 is blocked, the resolver gets a `WARN` and is checked over TCP. Manual alternatives are in [TOOLS_AND_FALLBACKS.md](TOOLS_AND_FALLBACKS.md).
 - Python import fails: check `python3-pyyaml` and `python3-jinja2` availability.
 - Installer missing/mismatched: check `command -v openshift-install` and `openshift-install version`.
 - DNS/F5 check fails: each `FAIL` line names the record or virtual server and the reason. `REFUSED` = the Infoblox allow-query ACL/views do not permit the bastion address; `NXDOMAIN` = record missing; `got X, expected Y` = wrong address; `SERVFAIL` = resolver/zone problem; `no reply` = routing or firewall. F5 `missing control-plane nodes` = the pool lacks inventory nodes; `no virtual server` = no VIP:port destination on the BIG-IP; HTTP 401/403 = bad credentials or a role that cannot read LTM objects. Details in [NETWORK_VALIDATION.md](NETWORK_VALIDATION.md). Run `ansible-playbook playbooks/netcheck.yml` to re-test without creating a run.

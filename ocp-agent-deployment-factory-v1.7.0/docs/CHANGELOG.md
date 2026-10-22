@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.7.0 — Fallbacks for blocked or missing tools (2026-10-22)
+
+- **Clarified** that no stage uses ICMP (ping); reachability is tested with DNS queries, HTTP requests and TCP connects. New page `docs/TOOLS_AND_FALLBACKS.md` lists every tool, its fallback, the override setting and manual alternatives (ping, traceroute, dig, nc, curl, openssl, ip).
+- **Added** built-in Python DNS client (`scripts/nettools.py`, standard library only) used when `dig` is not installed or `dns_checks.method: "builtin"`. UDP first, TCP fallback, compression, truncation and wrong-ID handling.
+- **Added** UDP-to-TCP fallback for DNS (`dns_checks.transport`, default `auto`): a resolver that answers only over TCP/53 is checked over TCP and reported once as a `WARN` (works with both `dig`, via `+tcp`, and the built-in client). When both transports fail the error names each.
+- **Added** built-in Python HTTP client used when `curl` is not installed or forced (`preflight.http_client`, `infrastructure.f5_checks.rest.http_client`, default `auto`), with proxy, CA bundle, TLS verify and basic-auth support and curl-like error wording.
+- **Changed** `playbooks/dependencies.yml` now has required packages (python3, PyYAML, Jinja2, qemu-img, nmstate, tar, gzip: stop on failure) and optional packages (curl, bind-utils, nmap-ncat, iproute, openssl, python3-pip: failure only prints what the factory does instead). Previously a missing `nc`, `dig` or `nslookup` stopped the run.
+- **Changed** the URL preflight (curl path) no longer follows redirects, matching the built-in client: any HTTP answer, including 301, means reachable.
+- **Added** to the reports: `client` in `preflight-report.json`, `tools` in `netcheck-report.json`, and a `NETCHECK tools:` line in the output.
+- Tested locally with `dig` and `curl` removed from `PATH`: DNS mock server (real wire protocol, UDP+TCP), HTTP/HTTPS servers, a forward proxy (plain and CONNECT), a mock BIG-IP, and a full prepare/approve/build/archive run; results compared with the `dig`/`curl` paths. **Not tested on a real Oracle Linux 9 host (Python 3.9 was only checked for syntax), real `ansible-playbook`, Infoblox, BIG-IP or proxy.** The edited `dependencies.yml` could not be run because Ansible is not available in the test environment.
+
 ## v1.6.0 — DNS (Infoblox) and F5 BIG-IP checks (2026-10-21)
 
 - **Added** `netcheck` stage (`scripts/netcheck.py`, `playbooks/netcheck.yml`), run automatically by `prepare` after the URL preflight; bypass with `-e skip_netcheck=true` (or `FACTORY_SKIP_NETCHECK=true`). Any `FAIL` stops `prepare` before a run is created; `WARN` never blocks. Result saved as `netcheck-report.json` (no credentials) and archived.

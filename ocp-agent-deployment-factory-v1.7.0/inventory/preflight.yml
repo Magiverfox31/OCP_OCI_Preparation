@@ -1,6 +1,7 @@
 preflight:
   enabled: true            # false skips the URL reachability check entirely
   timeout_seconds: 10      # per-URL connect/total timeout
+  http_client: "auto"      # "auto" (curl if installed, otherwise the built-in Python client), "curl" or "urllib"
   proxy: ""                # optional, e.g. http://proxy.example.internal:3128 (empty = use environment/no proxy)
   ca_bundle: ""            # optional absolute path to a CA bundle (TLS-inspecting proxy)
   # Any HTTP response (even 401/403/404) counts as reachable; DNS, connect, TLS and timeout errors count as blocked.

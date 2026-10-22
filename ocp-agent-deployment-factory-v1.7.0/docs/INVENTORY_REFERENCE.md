@@ -1,4 +1,4 @@
-# Inventory reference — v1.6.0
+# Inventory reference — v1.7.0
 
 Edit **only** the five files in `inventory/`. The corresponding `inventory_templates/` files are the clean reset baseline; do not place real cluster values or secrets there.
 
@@ -8,7 +8,7 @@ Edit **only** the five files in `inventory/`. The corresponding `inventory_templ
 | `nodes.yml` | Exactly three `master` hosts; any supported `worker` hosts; each has unique `name`, `ip`, `mac`, `interface`, `prefix_length`; optional per-host `gateway`, `dns_servers`, `root_device_hint`, `oci_vm_id` |
 | `network.yml` | `machine_network`, `cluster_network`, `host_prefix`, `service_network`, `network_type: OVNKubernetes`, `dns_servers`, `gateway`; optional `proxy` block (below) |
 | `infrastructure.yml` | `platform: oci`, `dns_provider: infoblox`, `loadbalancer_provider: f5`, `api_vip`, `ingress_vip`, `f5_self_ips`; optional `dns_checks` and `f5_checks` blocks (see "DNS and F5 check settings") |
-| `preflight.yml` | `enabled`, `timeout_seconds`, `proxy` (optional), `ca_bundle` (optional), `urls` (list). See [PREFLIGHT.md](PREFLIGHT.md) |
+| `preflight.yml` | `enabled`, `timeout_seconds`, `http_client` (`auto`/`curl`/`urllib`), `proxy` (optional), `ca_bundle` (optional), `urls` (list). See [PREFLIGHT.md](PREFLIGHT.md) |
 
 The current validation supports **OCI + Infoblox + F5, x86_64, OCP 4.22, exactly three masters**. It is not yet a general multi-platform/multi-version validator. The inventory may be reused for multiple *sequential* clusters; each completed run has a distinct cluster/run-ID archive.
 
@@ -41,6 +41,8 @@ These blocks configure the `netcheck` stage described in [NETWORK_VALIDATION.md]
 | `dns_checks.node_domain` | `""` | Domain appended to node names that contain no dot. Empty = `<cluster>.<base_domain>`. |
 | `dns_checks.api_int_vip` | `""` | Expected `api-int` address if it differs from `api_vip`. |
 | `dns_checks.check_reverse` | `true` | Require a PTR record for every node IP. |
+| `dns_checks.method` | `"auto"` | `"auto"` (dig if installed, otherwise the built-in Python resolver), `"dig"` or `"builtin"`. See [TOOLS_AND_FALLBACKS.md](TOOLS_AND_FALLBACKS.md). |
+| `dns_checks.transport` | `"auto"` | `"auto"` (UDP, then TCP when UDP gets no reply; a resolver that needs TCP gets a `WARN`), `"udp"` or `"tcp"`. |
 | `f5_checks.enabled` | `true` | Master switch for the F5 checks. |
 | `f5_checks.tcp_probe` | `"warn"` | `"off"`, `"warn"` (report only) or `"require"` (fail on any refused/timed-out probe). Use `"require"` only once the cluster is running. |
 | `f5_checks.timeout_seconds` | `5` | TCP/REST timeout. |
@@ -51,6 +53,7 @@ These blocks configure the `netcheck` stage described in [NETWORK_VALIDATION.md]
 | `f5_checks.rest.password_file` | `""` | Alternative: absolute path to a file containing only the password (takes precedence over the variable). |
 | `f5_checks.rest.verify_tls` | `true` | `false` disables certificate verification (last resort for a self-signed management certificate). |
 | `f5_checks.rest.ca_bundle` | `""` | PEM CA bundle that signed the management certificate. |
+| `f5_checks.rest.http_client` | `"auto"` | `"auto"` (curl if installed, otherwise the built-in Python client), `"curl"` or `"urllib"`. |
 
 Validation also rejects an `api_vip` or `ingress_vip` equal to a node IP.
 
