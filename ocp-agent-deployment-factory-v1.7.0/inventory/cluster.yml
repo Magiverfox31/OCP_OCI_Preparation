@@ -1,9 +1,0 @@
-cluster:
-  name: ""  # required: DNS label, e.g. ocp-uat
-  base_domain: ""  # e.g. example.internal
-  ocp_version: "4.22"
-  architecture: x86_64
-  pull_secret_file: ""  # absolute path to pull secret JSON; never commit it
-  ssh_public_key_file: ""  # absolute path to public SSH key
-  rendezvous_ip: ""  # IP of one control-plane node
-  release_image: ""  # optional pinned release image; empty uses matching installer default

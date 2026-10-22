@@ -1,0 +1,16 @@
+network:
+  machine_network: ""  # e.g. 10.10.10.0/24
+  cluster_network: 10.128.0.0/14
+  host_prefix: 23
+  service_network: 172.30.0.0/16
+  network_type: OVNKubernetes
+  dns_servers: []  # Infoblox DNS resolver IPs
+  gateway: ""
+  ntp_servers: []   # optional, shared by all hosts; e.g. [ntp1.example.internal] (OCI instances can also use the OCI NTP address; verify for your tenancy). Empty = installer default.
+proxy:
+  enabled: false
+  http_proxy: ""                         # e.g. http://proxy.example.internal:3128 (http:// only; avoid credentials if possible)
+  https_proxy: ""                        # e.g. http://proxy.example.internal:3128
+  no_proxy: []                           # extra entries, e.g. [".example.internal", "10.10.10.0/24"]; the machine, cluster and service networks, localhost, .svc, .cluster.local and api-int.<cluster>.<base_domain> are added automatically
+  additional_trust_bundle_file: ""       # optional absolute path to a PEM CA bundle (TLS-inspecting proxy or private registry)
+  additional_trust_bundle_policy: Proxyonly   # Proxyonly or Always

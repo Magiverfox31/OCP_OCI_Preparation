@@ -1,0 +1,10 @@
+cluster:
+  name: ""  # required: DNS label, e.g. ocp-uat
+  base_domain: ""  # e.g. example.internal
+  ocp_version: "4.22"
+  architecture: x86_64
+  pull_secret_file: ""  # absolute path to pull secret JSON; never commit it
+  ssh_public_key_file: ""  # absolute path to public SSH key
+  rendezvous_ip: ""  # IP of one control-plane node
+  minimal_iso: true   # standard value: ISO without the rootfs image (smaller; each node downloads the rootfs during installation, so the node subnet needs access to the Red Hat rootfs URL). false = full ISO
+  release_image: ""  # optional pinned release image; empty uses matching installer default

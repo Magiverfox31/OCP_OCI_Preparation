@@ -1,0 +1,51 @@
+apiVersion: v1beta1
+kind: AgentConfig
+metadata:
+  name: {{ cluster.name }}
+rendezvousIP: {{ cluster.rendezvous_ip }}
+minimalISO: {{ 'true' if cluster.minimal_iso else 'false' }}
+{% if network.ntp_servers %}
+additionalNTPSources:
+{% for server in network.ntp_servers %}
+- {{ server | tojson }}
+{% endfor %}
+{% endif %}
+hosts:
+{% for host in nodes %}
+- hostname: {{ host.name }}
+  role: {{ host.role }}
+  interfaces:
+  - name: {{ host.interface }}
+    macAddress: {{ host.mac }}
+  networkConfig:
+    interfaces:
+    - name: {{ host.interface }}
+      type: ethernet
+      state: up
+{% if host.mtu is defined %}
+      mtu: {{ host.mtu }}
+{% endif %}
+      mac-address: {{ host.mac }}
+      ipv4:
+        enabled: true
+        dhcp: false
+        address:
+        - ip: {{ host.ip }}
+          prefix-length: {{ host.prefix_length }}
+    dns-resolver:
+      config:
+        server:
+{% for server in host.dns_servers | default(network.dns_servers) %}
+        - {{ server }}
+{% endfor %}
+    routes:
+      config:
+      - destination: 0.0.0.0/0
+        next-hop-address: {{ host.gateway | default(network.gateway) }}
+        next-hop-interface: {{ host.interface }}
+        table-id: 254
+{% if host.root_device_hint | default('') %}
+  rootDeviceHints:
+    deviceName: {{ host.root_device_hint }}
+{% endif %}
+{% endfor %}

@@ -1,0 +1,38 @@
+preflight:
+  enabled: true            # false skips the URL reachability check entirely
+  timeout_seconds: 10      # per-URL connect/total timeout
+  http_client: "auto"      # "auto" (curl if installed, otherwise the built-in Python client), "curl" or "urllib"
+  proxy: "http://10.102.5.102:8080" # optional, e.g. http://proxy.example.internal:3128 (empty = use environment/no proxy)
+  ca_bundle: ""            # optional absolute path to a CA bundle (TLS-inspecting proxy)
+  # Any HTTP response (even 401/403/404) counts as reachable; DNS, connect, TLS and timeout errors count as blocked.
+  # Verify this list against the Red Hat OpenShift 4.22 documentation for your install method before relying on it.
+  urls:
+    - https://registry.redhat.io
+    - https://access.redhat.com
+    - https://registry.access.redhat.com
+    - https://quay.io
+    - https://cdn.quay.io
+    - https://cdn01.quay.io
+    - https://cdn02.quay.io
+    - https://cdn03.quay.io
+    - https://cdn04.quay.io
+    - https://cdn05.quay.io
+    - https://cdn06.quay.io
+    - https://icr.io
+    - https://cp.icr.io
+    - https://console.redhat.com
+    - https://sso.redhat.com
+    - https://api.openshift.com
+    - https://mirror.openshift.com
+    - https://quayio-production-s3.s3.amazonaws.com
+    - https://rhcos.mirror.openshift.com
+    - https://storage.googleapis.com/openshift-release
+    - https://cert-api.access.redhat.com
+    - https://api.access.redhat.com
+    - https://infogw.api.openshift.com
+    - https://console.redhat.com
+    - https://registry.connect.redhat.com
+    - https://k8s.gcr.io
+    - https://ghcr.io
+    - https://storage.googleapis.com
+    - https://registry.k8s.io

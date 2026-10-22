@@ -1,0 +1,89 @@
+# Per host you only type name, ip and mac. Everything else is shared:
+#   interface, MTU, root disk -> node_defaults below
+#   subnet prefix        -> taken from network.machine_network (override with node_defaults.prefix_length)
+#   gateway, DNS         -> network.yml
+#   NTP                  -> network.yml (ntp_servers)
+# A host name may be a short name or an FQDN (e.g. master01.cluster.example.internal); it is used as the hostname as written.
+# The role comes from the list the host is in. Any shared value can still be overridden on a single host
+# (allowed host keys: name, ip, mac, interface, prefix_length, mtu, gateway, dns_servers, root_device_hint, oci_vm_id).
+# Exactly three masters are required. cluster.rendezvous_ip must be the IP of one master.
+node_defaults:
+  interface: "enp0s9"            # NIC name on every host, e.g. enp0s5 or ens3 (must match the name the OS sees on the OCI VM)
+  root_device_hint: "/dev/sda"     # install disk for every host, e.g. /dev/sda ; empty = the installer chooses
+  mtu: 9000                # standard value for every host (jumbo frames; the whole path must support 9000). Can be overridden per host
+  # prefix_length: 24      # optional ; default = prefix of network.machine_network
+
+masters:
+  - name: ocidev2mas1lxv, 
+    ip: 10.228.220.11 
+    mac: "02:00:17:04:ed:b5"
+  - name: ocidev2mas2lxv
+    ip: 10.228.220.12 
+    mac: "02:00:17:01:0d:88"
+  - name: ocidev2mas3lxv
+    ip: 10.228.220.13 
+    mac: "02:00:17:01:b4:ed"
+  # Example (replace the line above by the list):
+  # masters:
+  #   - {name: ocp-uat-cp-1, ip: 10.10.10.11, mac: "02:00:00:00:00:11"}
+  #   - {name: ocp-uat-cp-2, ip: 10.10.10.12, mac: "02:00:00:00:00:12"}
+  #   - {name: ocp-uat-cp-3, ip: 10.10.10.13, mac: "02:00:00:00:00:13"}
+
+workers:
+  - name: ocidev2inf1lxv 
+    ip: 10.228.220.5  
+    mac: "enp0s9=02:00:17:03:62:d2"
+  - name: ocidev2inf2lxv
+    ip: 10.228.220.6  
+    mac: "02:00:17:05:8c:e9"
+  - name: ocidev2inf3lxv 
+    ip: 10.228.220.7  
+    mac: "02:00:17:05:20:31"
+  - name: ocidev2stg1lxv 
+    ip: 10.228.220.17 
+    mac: "02:00:17:04:ac:32"
+  - name: ocidev2stg2lxv
+    ip: 10.228.220.18 
+    mac: "02:00:17:04:1f:b3"
+  - name: ocidev2stg3lxv 
+    ip: 10.228.220.19 
+    mac: "02:00:17:01:19:89"
+  - name: ocidev2wrk1lxv 
+    ip: 10.228.220.25 
+    mac: "02:00:17:03:e2:ee"
+  - name: ocidev2wrk2lxv
+    ip: 10.228.220.26 
+    mac: "02:00:17:05:ea:e6"
+  - name: ocidev2wrk3lxv
+    ip: 10.228.220.27 
+    mac: "02:00:17:02:cc:6b"
+  - name: ocidev2wrk4lxv 
+    ip: 10.228.220.28 
+    mac: "02:00:17:05:1f:aa"
+  - name: ocidev2wrk5lxv 
+    ip: 10.228.220.29 
+    mac: "02:00:17:00:fa:37"
+  - name: ocidev2wrk6lxv 
+    ip: 10.228.220.30 
+    mac: "02:00:17:00:13:af"
+  - name: ocidev2wrk7lxv 
+    ip: 10.228.220.31 
+    mac: "02:00:17:00:ab:22"
+  - name: ocidev2wrk8lxv 
+    ip: 10.228.220.32 
+    mac: "02:00:17:03:e0:c4"
+  - name: ocidev2wrk9lxv 
+    ip: 10.228.220.33 
+    mac: "02:00:17:03:b2:c5"
+  - name: ocidev2wrk10lxv
+    ip: 10.228.220.34 
+    mac: "02:00:17:05:2e:26"
+  # Example:
+  # workers:
+  #   - {name: ocp-uat-wk-1, ip: 10.10.10.14, mac: "02:00:00:00:00:14"}
+  #   - {name: ocp-uat-wk-2, ip: 10.10.10.15, mac: "02:00:00:00:00:15", root_device_hint: /dev/nvme0n1}   # per-host override
+
+
+
+
+ 

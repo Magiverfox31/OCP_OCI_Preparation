@@ -1,0 +1,27 @@
+# Per host you only type name, ip and mac. Everything else is shared:
+#   interface, MTU, root disk -> node_defaults below
+#   subnet prefix        -> taken from network.machine_network (override with node_defaults.prefix_length)
+#   gateway, DNS         -> network.yml
+#   NTP                  -> network.yml (ntp_servers)
+# A host name may be a short name or an FQDN (e.g. master01.cluster.example.internal); it is used as the hostname as written.
+# The role comes from the list the host is in. Any shared value can still be overridden on a single host
+# (allowed host keys: name, ip, mac, interface, prefix_length, mtu, gateway, dns_servers, root_device_hint, oci_vm_id).
+# Exactly three masters are required. cluster.rendezvous_ip must be the IP of one master.
+node_defaults:
+  interface: ""            # NIC name on every host, e.g. enp0s5 or ens3 (must match the name the OS sees on the OCI VM)
+  root_device_hint: ""     # install disk for every host, e.g. /dev/sda ; empty = the installer chooses
+  mtu: 9000                # standard value for every host (jumbo frames; the whole path must support 9000). Can be overridden per host
+  # prefix_length: 24      # optional ; default = prefix of network.machine_network
+
+masters: []
+  # Example (replace the line above by the list):
+  # masters:
+  #   - {name: ocp-uat-cp-1, ip: 10.10.10.11, mac: "02:00:00:00:00:11"}
+  #   - {name: ocp-uat-cp-2, ip: 10.10.10.12, mac: "02:00:00:00:00:12"}
+  #   - {name: ocp-uat-cp-3, ip: 10.10.10.13, mac: "02:00:00:00:00:13"}
+
+workers: []
+  # Example:
+  # workers:
+  #   - {name: ocp-uat-wk-1, ip: 10.10.10.14, mac: "02:00:00:00:00:14"}
+  #   - {name: ocp-uat-wk-2, ip: 10.10.10.15, mac: "02:00:00:00:00:15", root_device_hint: /dev/nvme0n1}   # per-host override
