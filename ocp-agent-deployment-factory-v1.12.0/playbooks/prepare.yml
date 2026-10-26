@@ -1,0 +1,25 @@
+---
+- import_playbook: dependencies.yml
+
+- name: OpenShift factory - prepare (validate inventory, render configs; no connectivity tests)
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Execute prepare stage
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ playbook_dir }}/../scripts/factory.py"
+          - prepare
+      register: prepare_result
+      changed_when: prepare_result.rc == 0
+      failed_when: false
+
+    - name: Show prepare output
+      ansible.builtin.debug:
+        msg: "{{ (prepare_result.stdout_lines | default([])) + (prepare_result.stderr_lines | default([])) }}"
+
+    - name: Stop if prepare failed
+      ansible.builtin.fail:
+        msg: "prepare failed (exit code {{ prepare_result.rc }}); see the output above."
+      when: prepare_result.rc != 0

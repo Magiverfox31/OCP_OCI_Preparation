@@ -1,0 +1,26 @@
+---
+# Standalone DNS (Infoblox) and F5 BIG-IP checks driven by testing/dns_f5.yml (the values checked come from inventory/).
+# Read-only; creates no run. Run it BEFORE archive, because archive resets the inventory.
+# For the F5 REST check export the password first:  export F5_PASSWORD='...'
+- name: OpenShift factory - netcheck (DNS and F5 BIG-IP)
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Run DNS and F5 checks
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ playbook_dir }}/../scripts/factory.py"
+          - netcheck
+      register: netcheck_result
+      changed_when: false
+      failed_when: false
+
+    - name: Show netcheck output
+      ansible.builtin.debug:
+        msg: "{{ (netcheck_result.stdout_lines | default([])) + (netcheck_result.stderr_lines | default([])) }}"
+
+    - name: Stop if netcheck failed
+      ansible.builtin.fail:
+        msg: "netcheck failed (exit code {{ netcheck_result.rc }}); see the output above."
+      when: netcheck_result.rc != 0

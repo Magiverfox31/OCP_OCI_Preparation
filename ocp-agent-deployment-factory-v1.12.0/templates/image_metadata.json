@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "externalLaunchOptions": {
+    "firmware": "UEFI_64",
+    "networkType": "PARAVIRTUALIZED",
+    "bootVolumeType": "PARAVIRTUALIZED",
+    "remoteDataVolumeType": "PARAVIRTUALIZED",
+    "localDataVolumeType": "PARAVIRTUALIZED",
+    "launchOptionsSource": "PARAVIRTUALIZED",
+    "pvAttachmentVersion": 1,
+    "pvEncryptionInTransitEnabled": false,
+    "consistentVolumeNamingEnabled": false
+  },
+  "imageCapabilityData": null,
+  "imageCapsFormatVersion": null,
+  "operatingSystem": "Custom",
+  "operatingSystemVersion": "Custom"
+}

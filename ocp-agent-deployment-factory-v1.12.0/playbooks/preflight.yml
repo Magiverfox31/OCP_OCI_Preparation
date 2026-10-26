@@ -1,0 +1,33 @@
+---
+# Full preflight: runs EVERY check (inventory validation, tools, OCP allowlist URLs, DNS) without
+# stopping at the first failure, prints a PASSED/WARNINGS/FAILED summary (PASS green, FAIL red,
+# WARN yellow) and saves it to work/preflight-<time>.log. Creates no run. Fails at the end if anything FAILED.
+# The coloured report is written straight to the terminal (/dev/tty) because Ansible would otherwise
+# print the colour codes as text; without a terminal (cron, CI) a plain report is shown instead.
+- name: OpenShift factory - full preflight (inventory, tools, URLs, DNS)
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Run all preflight checks
+      ansible.builtin.shell: |
+        set -o pipefail
+        if ( : >/dev/tty ) 2>/dev/null; then
+          python3 "{{ playbook_dir }}/../scripts/factory.py" preflight --color 2>&1 | tee /dev/tty >/dev/null
+        else
+          python3 "{{ playbook_dir }}/../scripts/factory.py" preflight 2>&1
+        fi
+      args:
+        executable: /bin/bash
+      register: preflight_result
+      changed_when: false
+      failed_when: false
+
+    - name: Show preflight output (only when no terminal was available)
+      ansible.builtin.debug:
+        msg: "{{ preflight_result.stdout_lines | default([]) }}"
+      when: preflight_result.stdout | default('') | length > 0
+
+    - name: Stop if preflight failed
+      ansible.builtin.fail:
+        msg: "preflight failed (exit code {{ preflight_result.rc }}); the summary is above and in work/preflight-<time>.log."
+      when: preflight_result.rc != 0

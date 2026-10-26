@@ -1,0 +1,7 @@
+work/*
+!work/.gitkeep
+backups/*
+!backups/.gitkeep
+__pycache__/
+*.pyc
+.env

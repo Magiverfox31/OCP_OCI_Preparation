@@ -1,0 +1,22 @@
+cluster:
+  name: ""  # required: DNS label, e.g. ocp-uat
+  base_domain: ""  # e.g. example.internal
+  ocp_version: "4.22"
+  architecture: x86_64
+  pull_secret_file: ""  # absolute path to pull secret JSON; never commit it
+  ssh_public_key_file: ""  # absolute path to public SSH key
+  rendezvous_ip: ""  # IP of one control-plane node
+  minimal_iso: true   # standard value: ISO without the rootfs image (smaller; each node downloads the rootfs during installation, so the node subnet needs access to the Red Hat rootfs URL). false = full ISO
+  release_image: ""  # optional pinned release image; empty uses matching installer default
+  # --- Disconnected install: use an internal mirror registry (oc-mirror / oc adm release mirror) instead of quay.io ---
+  mirror:
+    enabled: false           # true = add imageContentSources + the registry CA to install-config.yaml
+    registry: ""             # mirrored repository as host[:port]/path, no https://, e.g. registry.example.internal:8443/ocp4/openshift4
+    sources:                 # the upstream repositories that are mirrored (defaults below are the standard OpenShift release ones)
+      - quay.io/openshift-release-dev/ocp-release
+      - quay.io/openshift-release-dev/ocp-v4.0-art-dev
+    ca_bundle_file: ""       # absolute path to the PEM CA that signed the registry certificate (goes into additionalTrustBundle, policy Always)
+    sources_key: imageContentSources   # field name written to install-config.yaml; "imageDigestSources" is the newer name of the same setting
+  # --- Phase 3 (image build) ---
+  image_build:
+    proxy: inherit           # proxy variables seen by openshift-install: inherit (leave your shell as is) | cluster (use network.yml proxy) | none (remove proxy variables)
