@@ -14,7 +14,7 @@ node_defaults:
   # prefix_length: 24      # optional ; default = prefix of network.machine_network
 
 masters:
-  - name: ocidev2mas1lxv, 
+  - name: ocidev2mas1lxv
     ip: 10.228.220.11 
     mac: "02:00:17:04:ed:b5"
   - name: ocidev2mas2lxv
