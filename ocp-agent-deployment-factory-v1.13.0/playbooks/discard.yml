@@ -1,0 +1,14 @@
+---
+- name: OpenShift factory - discard
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Execute discard stage
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ playbook_dir }}/../scripts/factory.py"
+          - discard
+          - --run-id
+          - "{{ run_id }}"
+      changed_when: true

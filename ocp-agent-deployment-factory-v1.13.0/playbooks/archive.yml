@@ -1,0 +1,12 @@
+---
+- name: OpenShift factory - archive
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Execute archive stage
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ playbook_dir }}/../scripts/factory.py"
+          - archive
+      changed_when: true

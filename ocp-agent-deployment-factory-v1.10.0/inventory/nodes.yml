@@ -32,7 +32,7 @@ masters:
 workers:
   - name: ocidev2inf1lxv 
     ip: 10.228.220.5  
-    mac: "enp0s9=02:00:17:03:62:d2"
+    mac: "02:00:17:03:62:d2"
   - name: ocidev2inf2lxv
     ip: 10.228.220.6  
     mac: "02:00:17:05:8c:e9"

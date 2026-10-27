@@ -1,22 +1,10 @@
 cluster:
-  name: ""  # required: DNS label, e.g. ocp-uat
-  base_domain: ""  # e.g. example.internal
+  name: "ocidevcl02"  # required: DNS label, e.g. ocp-uat
+  base_domain: "alrajhi.bank"  # e.g. example.internal
   ocp_version: "4.22"
   architecture: x86_64
-  pull_secret_file: ""  # absolute path to pull secret JSON; never commit it
-  ssh_public_key_file: ""  # absolute path to public SSH key
-  rendezvous_ip: ""  # IP of one control-plane node
+  pull_secret_file: "{"auths":{"cloud.openshift.com":{"auth":"b3BlbnNoaWZ0LXJlbGVhc2UtZGV2K29jbV9hY2Nlc3NfYTE5OGU3OTdhOTU1NGIwYmJlNzAyZmYzODcyMmM3ODg6RERGVkFWUzM0VkpYVkNOWjk4RlY0OTdRR0tBNVo4ODZBWFQxTkE3UkE5VldDRVdaUFU3S0lQNFo2VTZKTUhHSA==","email":"ocpsubscription@alrajhibank.com.sa"},"quay.io":{"auth":"b3BlbnNoaWZ0LXJlbGVhc2UtZGV2K29jbV9hY2Nlc3NfYTE5OGU3OTdhOTU1NGIwYmJlNzAyZmYzODcyMmM3ODg6RERGVkFWUzM0VkpYVkNOWjk4RlY0OTdRR0tBNVo4ODZBWFQxTkE3UkE5VldDRVdaUFU3S0lQNFo2VTZKTUhHSA==","email":"ocpsubscription@alrajhibank.com.sa"},"registry.connect.redhat.com":{"auth":"fHVoYy1wb29sLWJjYTRhZWMyLWM2ZTMtNGRlNy1hZTUwLWQ2MDUyMWUwNmVlZDpleUpoYkdjaU9pSlNVelV4TWlKOS5leUp6ZFdJaU9pSXpPRGhtTW1ZM01EQTNPV0UwWXpFek9UUmtaVEU0WlRVNE16Y3hZbUZoTVNKOS5FZlRpRTBCT0xwMnRmWmFpNnUwVEI4ZWZTZ2N3RlcyUmtXQ2tKMGlQYmNRQjFxOWFZdkJLQS1DUWI2OW5wMVNDSFEwZVJjVnIycVk5U2Z4b2hBUWFzd0t3TmEwRGZVdnp4aEZ2cHRzdEVSSXVJZmRySVZianhKTmFyWVlwQzFLTHhqbHJnaWVkdFU2bF9uX1h4UEtnWVAxb1lTTy13bExQdm5UT1pnYmV2ZFFDZkNlbmtlWFlyQ2lGWnh3UHh6cXBfVjJDeVlnQ19IckQtWHJocl9hR0RWR19ZeDBCTWtfTFI1RXdBNXU5LWhoLXpvU1cxUmllLVhfTmNNSXZZdnVDTkhkR1ZrOWtSdVExOXd0ekZqbW9HR0lnc3BsRzFsd05SVTZQaHVtRy0yazBsSGVWYUhmR2dDWTlEeGpQcTNCUXdNY2gyeVdxU0pQZlhuMTZvMUw4UWkzNTZLeWxrcllISkdQLVJxTG5NX0ZyTFFtbHllZkxhZV9LQWtXMV90Mk5kLXhKSVNBeUVTOFFVQkIyWElabTE4VVY3czZoUGxjNk43ck5NTlFxVmxZQXN1R0ZCMWtuQjdZSFRreEh4bnllYnRaMUt6SzRCMG1PdzJJNzZ4SmZmRWE0N3AwalFVRWw2WkY2aFI3OFg0dUxnbk1sX1BLY3FDNVJzNzR5bURlZWZaMmxYbmVlVF83SzczZ1JDUWd2eTRTZnU2d2tpaEF0OTUwNGdSTkZJTEdNbnlHSFhxWjJoak5ESWhFWGlVaWRua0lGN1Jsc252M3NpcldqR1dCXzI5OS1OcGhTZmpCUndXRG82VUdxUGlEYTBjcEdxRUNmY1ZZbXYyWmwyZzRsRWY4bDNIRjItYndrVkx3SWZMdXBTb2MwWGlVSkx2M1JuY3Njck1Eb2NPUQ==","email":"ocpsubscription@alrajhibank.com.sa"},"registry.redhat.io":{"auth":"fHVoYy1wb29sLWJjYTRhZWMyLWM2ZTMtNGRlNy1hZTUwLWQ2MDUyMWUwNmVlZDpleUpoYkdjaU9pSlNVelV4TWlKOS5leUp6ZFdJaU9pSXpPRGhtTW1ZM01EQTNPV0UwWXpFek9UUmtaVEU0WlRVNE16Y3hZbUZoTVNKOS5FZlRpRTBCT0xwMnRmWmFpNnUwVEI4ZWZTZ2N3RlcyUmtXQ2tKMGlQYmNRQjFxOWFZdkJLQS1DUWI2OW5wMVNDSFEwZVJjVnIycVk5U2Z4b2hBUWFzd0t3TmEwRGZVdnp4aEZ2cHRzdEVSSXVJZmRySVZianhKTmFyWVlwQzFLTHhqbHJnaWVkdFU2bF9uX1h4UEtnWVAxb1lTTy13bExQdm5UT1pnYmV2ZFFDZkNlbmtlWFlyQ2lGWnh3UHh6cXBfVjJDeVlnQ19IckQtWHJocl9hR0RWR19ZeDBCTWtfTFI1RXdBNXU5LWhoLXpvU1cxUmllLVhfTmNNSXZZdnVDTkhkR1ZrOWtSdVExOXd0ekZqbW9HR0lnc3BsRzFsd05SVTZQaHVtRy0yazBsSGVWYUhmR2dDWTlEeGpQcTNCUXdNY2gyeVdxU0pQZlhuMTZvMUw4UWkzNTZLeWxrcllISkdQLVJxTG5NX0ZyTFFtbHllZkxhZV9LQWtXMV90Mk5kLXhKSVNBeUVTOFFVQkIyWElabTE4VVY3czZoUGxjNk43ck5NTlFxVmxZQXN1R0ZCMWtuQjdZSFRreEh4bnllYnRaMUt6SzRCMG1PdzJJNzZ4SmZmRWE0N3AwalFVRWw2WkY2aFI3OFg0dUxnbk1sX1BLY3FDNVJzNzR5bURlZWZaMmxYbmVlVF83SzczZ1JDUWd2eTRTZnU2d2tpaEF0OTUwNGdSTkZJTEdNbnlHSFhxWjJoak5ESWhFWGlVaWRua0lGN1Jsc252M3NpcldqR1dCXzI5OS1OcGhTZmpCUndXRG82VUdxUGlEYTBjcEdxRUNmY1ZZbXYyWmwyZzRsRWY4bDNIRjItYndrVkx3SWZMdXBTb2MwWGlVSkx2M1JuY3Njck1Eb2NPUQ==","email":"ocpsubscription@alrajhibank.com.sa"}}"  # absolute path to pull secret JSON; never commit it
+  ssh_public_key_file: ""rsa-key-20261012"AAAAB3NzaC1yc2EAAAADAQABAAABAQDgNdqcJaY6U7d9WRXfjsoJ2PTiLvIoDimoTprXP/C3ZKxmNWpCBSfK8UUdDeE2ZMzSe6bJTBZbAV/4OwzcH93Qde80XxGA0i87ykmoaytKyjjTc8hDbqxfY6qlUoVf7pL/uhwq4Vgz6FWyW96iwOm23nY9ed09o6M8zUolfDUlGdA77FsBRlqNXyK2gQGA9hlTSmpZ9XZhjKAr0G6bRuFUOQsZxZfYTcf6C6Ucir57Roj4c9hKZ8OSlo0MOfbYc5WSFhWkepbFPudlU3MjMLM53zRsf29DyZTEkF8wrJSxV76tkcwrCQcW4nHC2g54cNExWMZacxTfX89G8MQzhHWj"  # absolute path to public SSH key
+  rendezvous_ip: "10.228.220.11"  # IP of one control-plane node
   minimal_iso: true   # standard value: ISO without the rootfs image (smaller; each node downloads the rootfs during installation, so the node subnet needs access to the Red Hat rootfs URL). false = full ISO
   release_image: ""  # optional pinned release image; empty uses matching installer default
-  # --- Disconnected install: use an internal mirror registry (oc-mirror / oc adm release mirror) instead of quay.io ---
-  mirror:
-    enabled: false           # true = add imageContentSources + the registry CA to install-config.yaml
-    registry: ""             # mirrored repository as host[:port]/path, no https://, e.g. registry.example.internal:8443/ocp4/openshift4
-    sources:                 # the upstream repositories that are mirrored (defaults below are the standard OpenShift release ones)
-      - quay.io/openshift-release-dev/ocp-release
-      - quay.io/openshift-release-dev/ocp-v4.0-art-dev
-    ca_bundle_file: ""       # absolute path to the PEM CA that signed the registry certificate (goes into additionalTrustBundle, policy Always)
-    sources_key: imageContentSources   # field name written to install-config.yaml; "imageDigestSources" is the newer name of the same setting
-  # --- Phase 3 (image build) ---
-  image_build:
-    proxy: inherit           # proxy variables seen by openshift-install: inherit (leave your shell as is) | cluster (use network.yml proxy) | none (remove proxy variables)
