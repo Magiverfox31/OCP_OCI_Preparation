@@ -18,4 +18,4 @@ cluster:
     sources_key: imageContentSources   # field name written to install-config.yaml; "imageDigestSources" is the newer name of the same setting
   # --- Phase 3 (image build) ---
   image_build:
-    proxy: inherit           # proxy variables seen by openshift-install: inherit (leave your shell as is) | cluster (use network.yml proxy) | none (remove proxy variables)
+    proxy: inherit  # proxy variables seen by openshift-install: inherit (leave your shell as is) | cluster (use network.yml proxy) | none (remove proxy variables)
